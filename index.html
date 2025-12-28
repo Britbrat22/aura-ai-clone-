@@ -109,18 +109,19 @@
                     </div>
                 </div>
 
-                <div id="upload-audio-options" style="display: none;">
-                    <div class="upload-area" id="audio-upload-area">
-                        <i class="fas fa-music"></i>
-                        <p>Click to browse or drag & drop audio file</p>
-                        <input type="file" id="audio-input" accept="audio/*" hidden>
-                    </div>
-                    <div id="audio-info" style="display: none;">
-                        <p><strong>File:</strong> <span id="audio-filename"></span></p>
-                        <p><strong>Duration:</strong> <span id="audio-duration"></span></p>
-                    </div>
-                </div>
-
+               <div id="upload-audio-options" style="display: none;">
+    <div class="upload-area" id="audio-upload-area">
+        <i class="fas fa-music"></i>
+        <p>Click to browse or drag & drop audio file</p>
+        <small>Supported: MP3, WAV, M4A (max 50MB)</small>
+        <input type="file" id="audio-input" accept="audio/mp3,audio/wav,audio/mpeg,audio/wave,audio/x-wav,audio/m4a" hidden>
+    </div>
+    <div id="audio-info" style="display: none;">
+        <p><strong>File:</strong> <span id="audio-filename"></span></p>
+        <p><strong>Duration:</strong> <span id="audio-duration"></span></p>
+        <p><strong>Format:</strong> <span id="audio-format"></span></p>
+    </div>
+</div>
                 <div class="input-group">
                     <label for="video-style">Video Style:</label>
                     <select id="video-style">
