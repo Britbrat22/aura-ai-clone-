@@ -3,6 +3,8 @@ class MusicVideoGenerator {
         this.audioContext = null;
         this.canvas = null;
         this.ctx = null;
+        this.mediaRecorder = null;
+        this.recordedChunks = [];
     }
 
     async generate(options) {
@@ -11,56 +13,88 @@ class MusicVideoGenerator {
         try {
             // Create canvas for video frames
             this.canvas = document.createElement('canvas');
-            this.canvas.width = 854;  // Reduced size for better performance
+            this.canvas.width = 854;
             this.canvas.height = 480;
             this.ctx = this.canvas.getContext('2d');
             
             let audioBuffer;
+            let audioUrl;
             
             if (audioSource === 'upload' && audioFile) {
-                // Use uploaded audio
-                audioBuffer = await this.processUploadedAudio(audioFile);
+                // Process uploaded audio file
+                const audioData = await this.processUploadedAudio(audioFile);
+                audioBuffer = audioData.buffer;
+                audioUrl = audioData.url;
             } else {
                 // Generate AI music
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 audioBuffer = await this.generateAudio(musicStyle, duration);
+                audioUrl = null;
             }
             
-            // Create simple video frames
-            const frames = await this.generateSimpleFrames(videoStyle, duration, lyrics, avatar);
+            // Create video frames
+            const frames = await this.generateVideoFrames(videoStyle, duration, lyrics, avatar);
             
-            // Create WebM video with audio
-            const videoBlob = await this.createSimpleVideo(audioBuffer, frames, duration);
+            // Create final video with audio
+            const videoBlob = await this.createVideoWithAudio(frames, audioBuffer, audioUrl, duration);
             
             return videoBlob;
             
         } catch (error) {
             console.error('Video generation error:', error);
             throw error;
+        } finally {
+            // Cleanup
+            if (this.audioContext) {
+                this.audioContext.close();
+            }
         }
     }
 
     async processUploadedAudio(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
+            
             reader.onload = async (e) => {
                 try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const response = await fetch(e.target.result);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    resolve(audioBuffer);
+                    // Create audio element to get duration and play audio
+                    const audio = new Audio(e.target.result);
+                    
+                    audio.addEventListener('loadedmetadata', async () => {
+                        try {
+                            // Create audio context and decode audio data
+                            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            const response = await fetch(e.target.result);
+                            const arrayBuffer = await response.arrayBuffer();
+                            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                            
+                            resolve({
+                                buffer: audioBuffer,
+                                url: e.target.result,
+                                duration: audio.duration
+                            });
+                        } catch (decodeError) {
+                            console.error('Audio decode error:', decodeError);
+                            reject(new Error('Failed to decode audio file. Please ensure it\'s a valid MP3 or WAV file.'));
+                        }
+                    });
+                    
+                    audio.addEventListener('error', () => {
+                        reject(new Error('Failed to load audio file'));
+                    });
+                    
                 } catch (error) {
                     reject(error);
                 }
             };
+            
             reader.onerror = () => reject(new Error('Failed to read audio file'));
             reader.readAsDataURL(file);
         });
     }
 
     async generateAudio(style, duration) {
-        const sampleRate = 22050; // Reduced sample rate for better performance
+        const sampleRate = 22050;
         const length = sampleRate * duration;
         const audioBuffer = this.audioContext.createBuffer(2, length, sampleRate);
         
@@ -96,11 +130,11 @@ class MusicVideoGenerator {
         return audioBuffer;
     }
 
-    async generateSimpleFrames(style, duration, lyrics, avatar) {
-        const fps = 15; // Reduced FPS for better performance
+    async generateVideoFrames(style, duration, lyrics, avatar) {
+        const fps = 12; // Reduced FPS for better performance
         const totalFrames = duration * fps;
         const frames = [];
-        const lyricLines = lyrics.split('\n').filter(line => line.trim());
+        const lyricLines = lyrics ? lyrics.split('\n').filter(line => line.trim()) : ['Enjoy the music!'];
         
         for (let frame = 0; frame < totalFrames; frame++) {
             const progress = frame / totalFrames;
@@ -223,51 +257,159 @@ class MusicVideoGenerator {
         });
     }
 
-    async createSimpleVideo(audioBuffer, frames, duration) {
-        return new Promise((resolve) => {
-            // Create a simple WebM video using MediaRecorder
-            const stream = this.canvas.captureStream(15); // 15 FPS
-            
-            let recorder;
+    async createVideoWithAudio(frames, audioBuffer, audioUrl, duration) {
+        return new Promise(async (resolve, reject) => {
             try {
-                recorder = new MediaRecorder(stream, {
-                    mimeType: 'video/webm;codecs=vp8',
-                    videoBitsPerSecond: 1000000 // Reduced bitrate
-                });
-            } catch (e) {
-                // Fallback to basic webm
-                recorder = new MediaRecorder(stream);
-            }
-            
-            const chunks = [];
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = () => {
-                const videoBlob = new Blob(chunks, { type: 'video/webm' });
-                resolve(videoBlob);
-            };
-            
-            recorder.start();
-            
-            // Render frames
-            let frameIndex = 0;
-            const fps = 15;
-            const totalFrames = duration * fps;
-            
-            const renderFrame = () => {
-                if (frameIndex < totalFrames) {
-                    this.ctx.putImageData(frames[frameIndex], 0, 0);
-                    frameIndex++;
-                    setTimeout(renderFrame, 1000 / fps);
+                let finalVideoBlob;
+                
+                if (audioUrl) {
+                    // Use uploaded audio - create video first, then combine
+                    finalVideoBlob = await this.createVideoWithUploadedAudio(frames, audioUrl, duration);
                 } else {
-                    // Stop recording after all frames are rendered
-                    setTimeout(() => {
-                        recorder.stop();
-                    }, 500);
+                    // Use generated audio - combine everything
+                    finalVideoBlob = await this.createVideoWithGeneratedAudio(frames, audioBuffer, duration);
                 }
-            };
-            
-            // Start rendering
-            renderFrame();
+                
+                resolve(finalVideoBlob);
+                
+            } catch (error) {
+                reject(error);
+            }
         });
+    }
+
+    async createVideoWithUploadedAudio(frames, audioUrl, duration) {
+        return new Promise((resolve, reject) => {
+            try {
+                // Create video stream from canvas
+                const stream = this.canvas.captureStream(12); // 12 FPS
+                
+                let recorder;
+                try {
+                    recorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp8,opus',
+                        videoBitsPerSecond: 1000000,
+                        audioBitsPerSecond: 128000
+                    });
+                } catch (e) {
+                    recorder = new MediaRecorder(stream);
+                }
+                
+                const chunks = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const videoBlob = new Blob(chunks, { type: 'video/webm' });
+                    resolve(videoBlob);
+                };
+                
+                recorder.start();
+                
+                // Render frames with timing
+                this.renderFramesWithTiming(frames, duration, recorder);
+                
+                // Add audio track separately for better compatibility
+                setTimeout(() => {
+                    this.addAudioTrackToVideo(stream, audioUrl).then(() => {
+                        setTimeout(() => {
+                            recorder.stop();
+                        }, 1000);
+                    }).catch(reject);
+                }, 100);
+                
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async createVideoWithGeneratedAudio(frames, audioBuffer, duration) {
+        return new Promise((resolve, reject) => {
+            try {
+                // Create audio element from buffer
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioSource = audioContext.createBufferSource();
+                audioSource.buffer = audioBuffer;
+                
+                // Create destination for recording
+                const destination = audioContext.createMediaStreamDestination();
+                audioSource.connect(destination);
+                
+                // Create video stream
+                const videoStream = this.canvas.captureStream(12);
+                
+                // Combine streams
+                const combinedStream = new MediaStream([
+                    ...videoStream.getVideoTracks(),
+                    ...destination.stream.getAudioTracks()
+                ]);
+                
+                let recorder;
+                try {
+                    recorder = new MediaRecorder(combinedStream, {
+                        mimeType: 'video/webm;codecs=vp8,opus',
+                        videoBitsPerSecond: 1000000,
+                        audioBitsPerSecond: 128000
+                    });
+                } catch (e) {
+                    recorder = new MediaRecorder(combinedStream);
+                }
+                
+                const chunks = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const videoBlob = new Blob(chunks, { type: 'video/webm' });
+                    resolve(videoBlob);
+                };
+                
+                recorder.start();
+                
+                // Start audio and render frames
+                audioSource.start();
+                this.renderFramesWithTiming(frames, duration, recorder);
+                
+                // Stop recording after duration
+                setTimeout(() => {
+                    recorder.stop();
+                    audioSource.stop();
+                    audioContext.close();
+                }, (duration + 1) * 1000);
+                
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async addAudioTrackToVideo(stream, audioUrl) {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio(audioUrl);
+            audio.loop = false;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaElementSource(audio);
+            const destination = audioContext.createMediaStreamDestination();
+            
+            source.connect(destination);
+            stream.addTrack(destination.stream.getAudioTracks()[0]);
+            
+            audio.play().then(resolve).catch(reject);
+        });
+    }
+
+    renderFramesWithTiming(frames, duration, recorder) {
+        let frameIndex = 0;
+        const fps = 12;
+        const totalFrames = duration * fps;
+        const frameInterval = 1000 / fps;
+        
+        const renderNextFrame = () => {
+            if (frameIndex < totalFrames && recorder.state === 'recording') {
+                this.ctx.putImageData(frames[frameIndex], 0, 0);
+                frameIndex++;
+                setTimeout(renderNextFrame, frameInterval);
+            }
+        };
+        
+        renderNextFrame();
     }
 }
