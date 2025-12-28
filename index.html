@@ -29,12 +29,11 @@
                 <h2>Upload Your Photo</h2>
                 <div class="upload-area" id="avatar-upload-area">
                     <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & drop your photo here or click to browse</p>
+                    <p>Click to browse or drag & drop your photo here</p>
                     <input type="file" id="avatar-input" accept="image/*" hidden>
                 </div>
                 <div class="avatar-preview" id="avatar-preview" style="display: none;">
                     <img id="avatar-source-img" alt="Source photo">
-                    <canvas id="avatar-canvas" style="display: none;"></canvas>
                 </div>
             </div>
 
@@ -42,19 +41,19 @@
                 <h3>Choose Avatar Style</h3>
                 <div class="style-grid">
                     <div class="style-option" data-style="cartoon">
-                        <img src="https://via.placeholder.com/100x100/FF6B6B/FFFFFF?text=Cartoon" alt="Cartoon">
+                        <div class="style-icon">🎨</div>
                         <span>Cartoon</span>
                     </div>
                     <div class="style-option" data-style="anime">
-                        <img src="https://via.placeholder.com/100x100/4ECDC4/FFFFFF?text=Anime" alt="Anime">
+                        <div class="style-icon">🌸</div>
                         <span>Anime</span>
                     </div>
                     <div class="style-option" data-style="realistic">
-                        <img src="https://via.placeholder.com/100x100/45B7D1/FFFFFF?text=Realistic" alt="Realistic">
+                        <div class="style-icon">📸</div>
                         <span>Realistic</span>
                     </div>
                     <div class="style-option" data-style="cyberpunk">
-                        <img src="https://via.placeholder.com/100x100/96CEB4/FFFFFF?text=Cyberpunk" alt="Cyberpunk">
+                        <div class="style-icon">🌃</div>
                         <span>Cyberpunk</span>
                     </div>
                 </div>
@@ -83,22 +82,43 @@
         <div id="music-tab" class="tab-content">
             <div class="input-section">
                 <h2>Create Music Video</h2>
-                <div class="input-group">
-                    <label for="lyrics-input">Lyrics or Scene Description:</label>
-                    <textarea id="lyrics-input" placeholder="Enter your lyrics or describe the scene you want..."></textarea>
-                </div>
                 
                 <div class="input-group">
-                    <label for="music-style">Music Style:</label>
-                    <select id="music-style">
-                        <option value="pop">Pop</option>
-                        <option value="rock">Rock</option>
-                        <option value="electronic">Electronic</option>
-                        <option value="hip-hop">Hip Hop</option>
-                        <option value="classical">Classical</option>
-                        <option value="jazz">Jazz</option>
-                        <option value="ambient">Ambient</option>
+                    <label for="audio-source">Audio Source:</label>
+                    <select id="audio-source">
+                        <option value="generated">Generate AI Music</option>
+                        <option value="upload">Upload Audio File</option>
                     </select>
+                </div>
+
+                <div id="generated-audio-options">
+                    <div class="input-group">
+                        <label for="lyrics-input">Lyrics or Scene Description:</label>
+                        <textarea id="lyrics-input" placeholder="Enter your lyrics or describe the scene you want..."></textarea>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="music-style">Music Style:</label>
+                        <select id="music-style">
+                            <option value="pop">Pop</option>
+                            <option value="rock">Rock</option>
+                            <option value="electronic">Electronic</option>
+                            <option value="hip-hop">Hip Hop</option>
+                            <option value="ambient">Ambient</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="upload-audio-options" style="display: none;">
+                    <div class="upload-area" id="audio-upload-area">
+                        <i class="fas fa-music"></i>
+                        <p>Click to browse or drag & drop audio file</p>
+                        <input type="file" id="audio-input" accept="audio/*" hidden>
+                    </div>
+                    <div id="audio-info" style="display: none;">
+                        <p><strong>File:</strong> <span id="audio-filename"></span></p>
+                        <p><strong>Duration:</strong> <span id="audio-duration"></span></p>
+                    </div>
                 </div>
 
                 <div class="input-group">
@@ -108,20 +128,19 @@
                         <option value="cinematic">Cinematic</option>
                         <option value="abstract">Abstract</option>
                         <option value="lyrics">Lyrics Focused</option>
-                        <option value="story">Storytelling</option>
                     </select>
                 </div>
 
                 <div class="input-group">
                     <label for="duration">Duration (seconds):</label>
-                    <input type="range" id="duration" min="15" max="180" value="60">
-                    <span id="duration-value">60s</span>
+                    <input type="range" id="duration" min="15" max="120" value="30">
+                    <span id="duration-value">30s</span>
                 </div>
 
                 <div class="avatar-selection">
                     <h3>Use Avatar (Optional)</h3>
                     <div class="avatar-options">
-                        <div class="avatar-option" data-avatar="none">
+                        <div class="avatar-option selected" data-avatar="none">
                             <i class="fas fa-times"></i>
                             <span>None</span>
                         </div>
@@ -157,68 +176,9 @@
             <span class="progress-text">0%</span>
         </div>
     </div>
-<div class="youtube-section">
-    <h3>Or Use YouTube Song</h3>
-    <div class="input-group">
-        <label for="youtube-url">YouTube URL:</label>
-        <input type="url" id="youtube-url" placeholder="https://www.youtube.com/watch?v=...">
-        <button id="fetch-youtube" class="fetch-btn">
-            <i class="fab fa-youtube"></i> Fetch Song
-        </button>
-    </div>
-    <div id="youtube-preview" style="display: none;">
-        <img id="youtube-thumbnail" alt="YouTube thumbnail">
-        <div id="youtube-info">
-            <h4 id="youtube-title"></h4>
-            <p id="youtube-duration"></p>
-        </div>
-    </div>
-</div>
 
-<!-- Add file upload section -->
-<div class="file-upload-section">
-    <h3>Or Upload Audio File</h3>
-    <div class="upload-area" id="audio-upload-area">
-        <i class="fas fa-music"></i>
-        <p>Drag & drop audio file here or click to browse</p>
-        <input type="file" id="audio-input" accept="audio/*" hidden>
-    </div>
-    <div id="audio-info" style="display: none;">
-        <p><strong>File:</strong> <span id="audio-filename"></span></p>
-        <p><strong>Duration:</strong> <span id="audio-duration"></span></p>
-    </div>
-</div>
-
-<!-- Add new video generation options -->
-<div class="video-options">
-    <h3>Video Generation Options</h3>
-    <div class="option-group">
-        <label>
-            <input type="checkbox" id="lyrics-sync" checked>
-            Sync visuals to lyrics
-        </label>
-    </div>
-    <div class="option-group">
-        <label>
-            <input type="checkbox" id="beat-sync">
-            Sync visuals to beat
-        </label>
-    </div>
-    <div class="option-group">
-        <label>
-            <input type="checkbox" id="waveform-visual">
-            Add waveform visualization
-        </label>
-    </div>
-    <div class="option-group">
-        <label>
-            <input type="checkbox" id="subtitle-lyrics" checked>
-            Show lyrics as subtitles
-        </label>
-    </div>
-</div>    <script src="script.js"></script>
+    <script src="script.js"></script>
     <script src="avatar-generator.js"></script>
     <script src="music-video-generator.js"></script>
-    <script src="utils.js"></script>
 </body>
 </html>
