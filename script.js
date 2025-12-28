@@ -333,3 +333,114 @@ class AppUtils {
 document.addEventListener('DOMContentLoaded', () => {
     new AuraAIApp();
 });
+// Add to AuraAIApp class
+
+handleAudioUpload(file) {
+    if (!file.type.startsWith('audio/')) {
+        alert('Please upload an audio file (MP3 or WAV)');
+        return;
+    }
+
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+        alert('Audio file is too large. Maximum size is 50MB.');
+        return;
+    }
+
+    this.uploadedAudio = file;
+    
+    const audio = new Audio(URL.createObjectURL(file));
+    audio.addEventListener('loadedmetadata', () => {
+        document.getElementById('audio-filename').textContent = file.name;
+        document.getElementById('audio-duration').textContent = this.formatDuration(Math.floor(audio.duration));
+        document.getElementById('audio-info').style.display = 'block';
+        
+        // Update duration slider to match audio file
+        const durationSlider = document.getElementById('duration');
+        const audioDuration = Math.floor(audio.duration);
+        durationSlider.max = Math.min(audioDuration, 120); // Max 2 minutes
+        durationSlider.value = Math.min(audioDuration, 120);
+        document.getElementById('duration-value').textContent = this.formatDuration(Math.min(audioDuration, 120));
+        
+        console.log('Audio file loaded successfully:', file.name, 'Duration:', audioDuration, 'seconds');
+    });
+    
+    audio.addEventListener('error', () => {
+        alert('Failed to load audio file. Please ensure it\'s a valid MP3 or WAV file.');
+        this.uploadedAudio = null;
+        document.getElementById('audio-info').style.display = 'none';
+    });
+}
+
+async generateMusicVideo() {
+    const audioSource = document.getElementById('audio-source').value;
+    const lyrics = document.getElementById('lyrics-input').value.trim();
+    const musicStyle = document.getElementById('music-style').value;
+    const videoStyle = document.getElementById('video-style').value;
+    const duration = parseInt(document.getElementById('duration').value);
+    
+    if (audioSource === 'generated' && !lyrics) {
+        alert('Please enter lyrics for AI music generation');
+        return;
+    }
+    
+    if (audioSource === 'upload' && !this.uploadedAudio) {
+        alert('Please upload an audio file');
+        return;
+    }
+
+    const generateBtn = document.getElementById('generate-video');
+    const spinner = generateBtn.querySelector('.fa-cog');
+    const resultSection = document.getElementById('video-result');
+    
+    generateBtn.disabled = true;
+    spinner.style.display = 'inline-block';
+    
+    try {
+        this.showProgress('Creating your music video...');
+        
+        console.log('Starting video generation with:', {
+            audioSource,
+            videoStyle,
+            duration,
+            hasAvatar: !!this.generatedAvatar
+        });
+        
+        const videoGenerator = new MusicVideoGenerator();
+        const videoBlob = await videoGenerator.generate({
+            lyrics: lyrics || 'Enjoy the music!',
+            musicStyle,
+            videoStyle,
+            duration,
+            avatar: this.generatedAvatar,
+            audioSource: audioSource,
+            audioFile: this.uploadedAudio
+        });
+        
+        console.log('Video generated successfully, blob size:', videoBlob.size);
+        
+        const videoUrl = URL.createObjectURL(videoBlob);
+        const video = document.getElementById('generated-video');
+        video.src = videoUrl;
+        
+        // Show video info
+        video.addEventListener('loadedmetadata', () => {
+            console.log('Video loaded, duration:', video.duration, 'size:', videoBlob.size);
+        });
+        
+        resultSection.style.display = 'block';
+        
+        this.hideProgress();
+        
+        // Success message
+        alert('Music video created successfully! You can now download or share it.');
+        
+    } catch (error) {
+        console.error('Music video generation failed:', error);
+        alert('Failed to generate music video: ' + error.message + '\nPlease try again or try a different audio file.');
+    } finally {
+        generateBtn.disabled = false;
+        spinner.style.display = 'none';
+    }
+}
