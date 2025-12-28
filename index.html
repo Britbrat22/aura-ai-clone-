@@ -157,8 +157,66 @@
             <span class="progress-text">0%</span>
         </div>
     </div>
+<div class="youtube-section">
+    <h3>Or Use YouTube Song</h3>
+    <div class="input-group">
+        <label for="youtube-url">YouTube URL:</label>
+        <input type="url" id="youtube-url" placeholder="https://www.youtube.com/watch?v=...">
+        <button id="fetch-youtube" class="fetch-btn">
+            <i class="fab fa-youtube"></i> Fetch Song
+        </button>
+    </div>
+    <div id="youtube-preview" style="display: none;">
+        <img id="youtube-thumbnail" alt="YouTube thumbnail">
+        <div id="youtube-info">
+            <h4 id="youtube-title"></h4>
+            <p id="youtube-duration"></p>
+        </div>
+    </div>
+</div>
 
-    <script src="script.js"></script>
+<!-- Add file upload section -->
+<div class="file-upload-section">
+    <h3>Or Upload Audio File</h3>
+    <div class="upload-area" id="audio-upload-area">
+        <i class="fas fa-music"></i>
+        <p>Drag & drop audio file here or click to browse</p>
+        <input type="file" id="audio-input" accept="audio/*" hidden>
+    </div>
+    <div id="audio-info" style="display: none;">
+        <p><strong>File:</strong> <span id="audio-filename"></span></p>
+        <p><strong>Duration:</strong> <span id="audio-duration"></span></p>
+    </div>
+</div>
+
+<!-- Add new video generation options -->
+<div class="video-options">
+    <h3>Video Generation Options</h3>
+    <div class="option-group">
+        <label>
+            <input type="checkbox" id="lyrics-sync" checked>
+            Sync visuals to lyrics
+        </label>
+    </div>
+    <div class="option-group">
+        <label>
+            <input type="checkbox" id="beat-sync">
+            Sync visuals to beat
+        </label>
+    </div>
+    <div class="option-group">
+        <label>
+            <input type="checkbox" id="waveform-visual">
+            Add waveform visualization
+        </label>
+    </div>
+    <div class="option-group">
+        <label>
+            <input type="checkbox" id="subtitle-lyrics" checked>
+            Show lyrics as subtitles
+        </label>
+    </div>
+</div>    <script src="script.js"></script>
     <script src="avatar-generator.js"></script>
     <script src="music-video-generator.js"></script>
     <script src="utils.js"></script>
