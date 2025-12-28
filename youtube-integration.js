@@ -1,6 +1,6 @@
 class YouTubeIntegration {
     constructor() {
-        this.apiKey = 'YOUR_YOUTUBE_API_KEY'; // You'll need to get this from Google Cloud Console
+        this.apiKey = 'AIzaSyDxiKlcV3GIdx8ufSV6M_jZBRojLp7Y-qY'; // You'll need to get this from Google Cloud Console
         this.proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // For CORS issues
     }
 
