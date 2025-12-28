@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraAI Clone - Avatar & Music Video Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-magic"></i> AuraAI Clone</h1>
+            <p>Create avatars from photos and generate music videos with AI</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="avatar">
+                <i class="fas fa-user-circle"></i> Avatar Generator
+            </button>
+            <button class="tab-btn" data-tab="music">
+                <i class="fas fa-music"></i> Music Video Generator
+            </button>
+        </div>
+
+        <!-- Avatar Generator Tab -->
+        <div id="avatar-tab" class="tab-content active">
+            <div class="upload-section">
+                <h2>Upload Your Photo</h2>
+                <div class="upload-area" id="avatar-upload-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop your photo here or click to browse</p>
+                    <input type="file" id="avatar-input" accept="image/*" hidden>
+                </div>
+                <div class="avatar-preview" id="avatar-preview" style="display: none;">
+                    <img id="avatar-source-img" alt="Source photo">
+                    <canvas id="avatar-canvas" style="display: none;"></canvas>
+                </div>
+            </div>
+
+            <div class="avatar-styles">
+                <h3>Choose Avatar Style</h3>
+                <div class="style-grid">
+                    <div class="style-option" data-style="cartoon">
+                        <img src="https://via.placeholder.com/100x100/FF6B6B/FFFFFF?text=Cartoon" alt="Cartoon">
+                        <span>Cartoon</span>
+                    </div>
+                    <div class="style-option" data-style="anime">
+                        <img src="https://via.placeholder.com/100x100/4ECDC4/FFFFFF?text=Anime" alt="Anime">
+                        <span>Anime</span>
+                    </div>
+                    <div class="style-option" data-style="realistic">
+                        <img src="https://via.placeholder.com/100x100/45B7D1/FFFFFF?text=Realistic" alt="Realistic">
+                        <span>Realistic</span>
+                    </div>
+                    <div class="style-option" data-style="cyberpunk">
+                        <img src="https://via.placeholder.com/100x100/96CEB4/FFFFFF?text=Cyberpunk" alt="Cyberpunk">
+                        <span>Cyberpunk</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="generate-avatar" class="generate-btn" disabled>
+                <i class="fas fa-cog fa-spin" style="display: none;"></i>
+                Generate Avatar
+            </button>
+
+            <div id="avatar-result" class="result-section" style="display: none;">
+                <h3>Your Avatar</h3>
+                <img id="generated-avatar" alt="Generated avatar">
+                <div class="result-actions">
+                    <button id="download-avatar" class="download-btn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button id="regenerate-avatar" class="regenerate-btn">
+                        <i class="fas fa-redo"></i> Regenerate
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Music Video Generator Tab -->
+        <div id="music-tab" class="tab-content">
+            <div class="input-section">
+                <h2>Create Music Video</h2>
+                <div class="input-group">
+                    <label for="lyrics-input">Lyrics or Scene Description:</label>
+                    <textarea id="lyrics-input" placeholder="Enter your lyrics or describe the scene you want..."></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="music-style">Music Style:</label>
+                    <select id="music-style">
+                        <option value="pop">Pop</option>
+                        <option value="rock">Rock</option>
+                        <option value="electronic">Electronic</option>
+                        <option value="hip-hop">Hip Hop</option>
+                        <option value="classical">Classical</option>
+                        <option value="jazz">Jazz</option>
+                        <option value="ambient">Ambient</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="video-style">Video Style:</label>
+                    <select id="video-style">
+                        <option value="animated">Animated</option>
+                        <option value="cinematic">Cinematic</option>
+                        <option value="abstract">Abstract</option>
+                        <option value="lyrics">Lyrics Focused</option>
+                        <option value="story">Storytelling</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="duration">Duration (seconds):</label>
+                    <input type="range" id="duration" min="15" max="180" value="60">
+                    <span id="duration-value">60s</span>
+                </div>
+
+                <div class="avatar-selection">
+                    <h3>Use Avatar (Optional)</h3>
+                    <div class="avatar-options">
+                        <div class="avatar-option" data-avatar="none">
+                            <i class="fas fa-times"></i>
+                            <span>None</span>
+                        </div>
+                        <div class="avatar-option" data-avatar="generated">
+                            <i class="fas fa-user"></i>
+                            <span>Use Generated Avatar</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="generate-video" class="generate-btn">
+                <i class="fas fa-cog fa-spin" style="display: none;"></i>
+                Generate Music Video
+            </button>
+
+            <div id="video-result" class="result-section" style="display: none;">
+                <h3>Your Music Video</h3>
+                <video id="generated-video" controls></video>
+                <div class="result-actions">
+                    <button id="download-video" class="download-btn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button id="share-video" class="share-btn">
+                        <i class="fas fa-share"></i> Share
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-bar" id="progress-bar" style="display: none;">
+            <div class="progress-fill"></div>
+            <span class="progress-text">0%</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="avatar-generator.js"></script>
+    <script src="music-video-generator.js"></script>
+    <script src="utils.js"></script>
+</body>
+</html>
