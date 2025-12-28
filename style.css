@@ -553,4 +553,18 @@ header p {
     .option-group {
         margin: 10px 0;
     }
+}#audio-upload-area small {
+    display: block;
+    margin-top: 10px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#audio-info p {
+    margin: 8px 0;
+    color: #495057;
+}
+
+#audio-info strong {
+    color: #333;
 }
