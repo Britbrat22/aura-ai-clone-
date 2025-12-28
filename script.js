@@ -1,43 +1,54 @@
-class AuraAIApp {
+class SimpleVideoMaker {
     constructor() {
-        this.currentTab = 'avatar';
-        this.generatedAvatar = null;
-        this.currentAvatarStyle = null;
-        this.uploadedAudio = null;
-        this.initializeEventListeners();
+        this.audioFile = null;
+        this.selectedStyle = null;
+        this.audioContext = null;
+        this.analyser = null;
+        this.dataArray = null;
+        this.animationId = null;
+        this.canvas = null;
+        this.ctx = null;
+        this.mediaRecorder = null;
+        this.recordedChunks = [];
+        
+        this.initializeElements();
+        this.setupEventListeners();
     }
 
-    initializeEventListeners() {
-        // Tab switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
-        });
+    initializeElements() {
+        this.uploadArea = document.getElementById('audio-upload');
+        this.audioInput = document.getElementById('audio-input');
+        this.audioStatus = document.getElementById('audio-status');
+        this.audioName = document.getElementById('audio-name');
+        this.audioLength = document.getElementById('audio-length');
+        this.generateBtn = document.getElementById('generate-btn');
+        this.result = document.getElementById('result');
+        this.outputVideo = document.getElementById('output-video');
+        this.downloadBtn = document.getElementById('download-btn');
+        this.progress = document.getElementById('progress');
+        this.progressFill = this.progress.querySelector('.progress-fill');
+        this.progressText = this.progress.querySelector('.progress-text');
+    }
 
-        // Avatar upload
-        const uploadArea = document.getElementById('avatar-upload-area');
-        const fileInput = document.getElementById('avatar-input');
-
-        uploadArea.addEventListener('click', () => fileInput.click());
-        uploadArea.addEventListener('dragover', (e) => {
+    setupEventListeners() {
+        // File upload
+        this.uploadArea.addEventListener('click', () => this.audioInput.click());
+        this.uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            this.uploadArea.classList.add('dragover');
         });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
+        this.uploadArea.addEventListener('dragleave', () => {
+            this.uploadArea.classList.remove('dragover');
         });
-        uploadArea.addEventListener('drop', (e) => {
+        this.uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
+            this.uploadArea.classList.remove('dragover');
             const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                this.handleAvatarUpload(files[0]);
-            }
+            if (files.length > 0) this.handleAudioFile(files[0]);
         });
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                this.handleAvatarUpload(e.target.files[0]);
-            }
+        this.audioInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) this.handleAudioFile(e.target.files[0]);
         });
 
         // Style selection
@@ -45,402 +56,301 @@ class AuraAIApp {
             option.addEventListener('click', () => {
                 document.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
                 option.classList.add('selected');
-                this.currentAvatarStyle = option.dataset.style;
+                this.selectedStyle = option.dataset.style;
                 this.updateGenerateButton();
             });
         });
 
-        // Avatar generation
-        document.getElementById('generate-avatar').addEventListener('click', () => {
-            this.generateAvatar();
-        });
+        // Generate video
+        this.generateBtn.addEventListener('click', () => this.generateVideo());
 
-        // Audio source toggle
-        document.getElementById('audio-source').addEventListener('change', (e) => {
-            this.toggleAudioSource(e.target.value);
-        });
-
-        // Audio file upload
-        const audioUploadArea = document.getElementById('audio-upload-area');
-        const audioInput = document.getElementById('audio-input');
-
-        audioUploadArea.addEventListener('click', () => audioInput.click());
-        audioUploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            audioUploadArea.classList.add('dragover');
-        });
-        audioUploadArea.addEventListener('dragleave', () => {
-            audioUploadArea.classList.remove('dragover');
-        });
-        audioUploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            audioUploadArea.classList.remove('dragover');
-            const files = e.target.files || e.dataTransfer.files;
-            if (files.length > 0 && files[0].type.startsWith('audio/')) {
-                this.handleAudioUpload(files[0]);
-            }
-        });
-
-        audioInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                this.handleAudioUpload(e.target.files[0]);
-            }
-        });
-
-        // Music video generation
-        document.getElementById('generate-video').addEventListener('click', () => {
-            this.generateMusicVideo();
-        });
-
-        // Duration slider
-        const durationSlider = document.getElementById('duration');
-        const durationValue = document.getElementById('duration-value');
-        durationSlider.addEventListener('input', (e) => {
-            durationValue.textContent = e.target.value + 's';
-        });
-
-        // Avatar selection for music video
-        document.querySelectorAll('.avatar-option').forEach(option => {
-            option.addEventListener('click', () => {
-                document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
-                option.classList.add('selected');
-            });
-        });
-
-        // Download buttons
-        document.getElementById('download-avatar').addEventListener('click', () => {
-            if (this.generatedAvatar) {
-                AppUtils.downloadFile(this.generatedAvatar, 'my-avatar.png');
-            }
-        });
-
-        document.getElementById('download-video').addEventListener('click', () => {
-            const video = document.getElementById('generated-video');
-            if (video.src) {
-                AppUtils.downloadFile(video.src, 'music-video.webm');
-            }
-        });
+        // Download
+        this.downloadBtn.addEventListener('click', () => this.downloadVideo());
     }
 
-    switchTab(tabName) {
-        this.currentTab = tabName;
-        
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.tab === tabName);
-        });
-        
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.toggle('active', content.id === `${tabName}-tab`);
-        });
-    }
-
-    handleAvatarUpload(file) {
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = document.getElementById('avatar-source-img');
-            img.src = e.target.result;
-            document.getElementById('avatar-preview').style.display = 'block';
-            this.updateGenerateButton();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    handleAudioUpload(file) {
+    handleAudioFile(file) {
         if (!file.type.startsWith('audio/')) {
-            alert('Please upload an audio file');
+            alert('Please upload an audio file (MP3 or WAV)');
             return;
         }
 
-        this.uploadedAudio = file;
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            alert('File too large. Maximum size is 10MB.');
+            return;
+        }
+
+        this.audioFile = file;
+        this.audioName.textContent = file.name;
         
+        // Get audio duration
         const audio = new Audio(URL.createObjectURL(file));
         audio.addEventListener('loadedmetadata', () => {
-            document.getElementById('audio-filename').textContent = file.name;
-            document.getElementById('audio-duration').textContent = this.formatDuration(Math.floor(audio.duration));
-            document.getElementById('audio-info').style.display = 'block';
-            
-            // Update duration slider
-            const durationSlider = document.getElementById('duration');
-            durationSlider.max = Math.floor(audio.duration);
-            durationSlider.value = Math.floor(audio.duration);
-            document.getElementById('duration-value').textContent = this.formatDuration(Math.floor(audio.duration));
+            this.audioLength.textContent = this.formatTime(audio.duration);
+            this.audioStatus.style.display = 'block';
+            this.updateGenerateButton();
         });
     }
 
-    formatDuration(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-
-    toggleAudioSource(source) {
-        const generatedOptions = document.getElementById('generated-audio-options');
-        const uploadOptions = document.getElementById('upload-audio-options');
-        
-        if (source === 'upload') {
-            generatedOptions.style.display = 'none';
-            uploadOptions.style.display = 'block';
-        } else {
-            generatedOptions.style.display = 'block';
-            uploadOptions.style.display = 'none';
-        }
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
     updateGenerateButton() {
-        const generateBtn = document.getElementById('generate-avatar');
-        const hasImage = document.getElementById('avatar-source-img').src;
-        const hasStyle = this.currentAvatarStyle;
-        generateBtn.disabled = !hasImage || !hasStyle;
+        this.generateBtn.disabled = !this.audioFile || !this.selectedStyle;
     }
 
-    async generateAvatar() {
-        const generateBtn = document.getElementById('generate-avatar');
-        const spinner = generateBtn.querySelector('.fa-cog');
-        const resultSection = document.getElementById('avatar-result');
-        
-        generateBtn.disabled = true;
-        spinner.style.display = 'inline-block';
-        
-        try {
-            this.showProgress('Creating your avatar...');
-            
-            // Simple avatar generation using canvas
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const avatarGenerator = new AvatarGenerator();
-            const avatarDataUrl = await avatarGenerator.generate(
-                document.getElementById('avatar-source-img'),
-                this.currentAvatarStyle
-            );
-            
-            this.generatedAvatar = avatarDataUrl;
-            document.getElementById('generated-avatar').src = avatarDataUrl;
-            resultSection.style.display = 'block';
-            
-            this.hideProgress();
-            
-        } catch (error) {
-            console.error('Avatar generation failed:', error);
-            alert('Failed to generate avatar. Please try again.');
-        } finally {
-            generateBtn.disabled = false;
-            spinner.style.display = 'none';
-        }
-    }
+    async generateVideo() {
+        if (!this.audioFile || !this.selectedStyle) return;
 
-    async generateMusicVideo() {
-        const audioSource = document.getElementById('audio-source').value;
-        const lyrics = document.getElementById('lyrics-input').value.trim();
-        const musicStyle = document.getElementById('music-style').value;
-        const videoStyle = document.getElementById('video-style').value;
-        const duration = parseInt(document.getElementById('duration').value);
-        
-        if (audioSource === 'generated' && !lyrics) {
-            alert('Please enter lyrics for AI music generation');
-            return;
-        }
-        
-        if (audioSource === 'upload' && !this.uploadedAudio) {
-            alert('Please upload an audio file');
-            return;
-        }
+        this.generateBtn.disabled = true;
+        this.generateBtn.querySelector('.fa-cog').style.display = 'inline-block';
+        this.progress.style.display = 'block';
 
-        const generateBtn = document.getElementById('generate-video');
-        const spinner = generateBtn.querySelector('.fa-cog');
-        const resultSection = document.getElementById('video-result');
-        
-        generateBtn.disabled = true;
-        spinner.style.display = 'inline-block';
-        
         try {
-            this.showProgress('Creating your music video...');
+            this.progressText.textContent = 'Loading audio...';
+            this.updateProgress(20);
+
+            // Create canvas for video
+            this.canvas = document.createElement('canvas');
+            this.canvas.width = 640;
+            this.canvas.height = 360;
+            this.ctx = this.canvas.getContext('2d');
+
+            // Load audio
+            const audioUrl = URL.createObjectURL(this.audioFile);
+            const audio = new Audio(audioUrl);
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Simple video generation
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            this.updateProgress(40);
+
+            // Create audio analyzer
+            const response = await fetch(audioUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
             
-            const videoGenerator = new MusicVideoGenerator();
-            const videoBlob = await videoGenerator.generate({
-                lyrics: lyrics || 'Enjoy the music',
-                musicStyle,
-                videoStyle,
-                duration,
-                avatar: this.generatedAvatar,
-                audioSource: audioSource,
-                audioFile: this.uploadedAudio
-            });
+            this.analyser = audioContext.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
             
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.analyser);
+            source.connect(audioContext.destination);
+            
+            this.updateProgress(60);
+
+            // Create video with audio
+            this.progressText.textContent = 'Creating video...';
+            
+            const videoBlob = await this.createVideo(audioBuffer.duration);
+            
+            this.updateProgress(100);
+            
+            // Display result
             const videoUrl = URL.createObjectURL(videoBlob);
-            document.getElementById('generated-video').src = videoUrl;
-            resultSection.style.display = 'block';
+            this.outputVideo.src = videoUrl;
+            this.result.style.display = 'block';
             
-            this.hideProgress();
+            // Cleanup
+            audioContext.close();
             
         } catch (error) {
-            console.error('Music video generation failed:', error);
-            alert('Failed to generate music video. Please try again.');
+            console.error('Error creating video:', error);
+            alert('Error creating video. Please try again.');
         } finally {
-            generateBtn.disabled = false;
-            spinner.style.display = 'none';
+            this.generateBtn.disabled = false;
+            this.generateBtn.querySelector('.fa-cog').style.display = 'none';
+            this.progress.style.display = 'none';
+            this.progressFill.style.width = '0%';
         }
     }
 
-    showProgress(message) {
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = progressBar.querySelector('.progress-text');
-        const progressFill = progressBar.querySelector('.progress-fill');
-        
-        progressText.textContent = message;
-        progressBar.style.display = 'block';
-        
-        let progress = 0;
-        const interval = setInterval(() => {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            progressFill.style.width = progress + '%';
-        }, 500);
-        
-        this.progressInterval = interval;
+    updateProgress(percent) {
+        this.progressFill.style.width = percent + '%';
     }
 
-    hideProgress() {
-        const progressBar = document.getElementById('progress-bar');
-        progressBar.style.display = 'none';
+    createVideo(duration) {
+        return new Promise((resolve, reject) => {
+            try {
+                // Create media recorder
+                const stream = this.canvas.captureStream(30);
+                const audioTrack = this.createAudioTrack();
+                if (audioTrack) {
+                    stream.addTrack(audioTrack);
+                }
+                
+                let recorder;
+                try {
+                    recorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp8,opus',
+                        videoBitsPerSecond: 800000,
+                        audioBitsPerSecond: 128000
+                    });
+                } catch (e) {
+                    recorder = new MediaRecorder(stream);
+                }
+                
+                const chunks = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    resolve(blob);
+                };
+                
+                recorder.start();
+                
+                // Start animation
+                this.animate(duration, () => {
+                    setTimeout(() => {
+                        recorder.stop();
+                    }, 500);
+                });
+                
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    createAudioTrack() {
+        // Create a silent audio track if needed
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const destination = audioContext.createMediaStreamDestination();
         
-        if (this.progressInterval) {
-            clearInterval(this.progressInterval);
+        oscillator.frequency.value = 0; // Silent
+        oscillator.connect(destination);
+        oscillator.start();
+        
+        return destination.stream.getAudioTracks()[0];
+    }
+
+    animate(duration, onComplete) {
+        const startTime = Date.now();
+        const durationMs = duration * 1000;
+        
+        const animateFrame = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / durationMs, 1);
+            
+            // Clear canvas
+            this.ctx.fillStyle = '#000011';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Get audio data
+            if (this.analyser && this.dataArray) {
+                this.analyser.getByteFrequencyData(this.dataArray);
+            }
+            
+            // Draw based on selected style
+            switch (this.selectedStyle) {
+                case 'waveform':
+                    this.drawWaveform(progress);
+                    break;
+                case 'particles':
+                    this.drawParticles(progress);
+                    break;
+                case 'bars':
+                    this.drawBars(progress);
+                    break;
+                case 'circle':
+                    this.drawCircle(progress);
+                    break;
+            }
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateFrame);
+            } else {
+                onComplete();
+            }
+        };
+        
+        animateFrame();
+    }
+
+    drawWaveform(progress) {
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const barWidth = width / this.dataArray.length;
+        
+        this.ctx.fillStyle = '#00ff88';
+        for (let i = 0; i < this.dataArray.length; i++) {
+            const barHeight = (this.dataArray[i] / 255) * height * 0.8;
+            const x = i * barWidth;
+            const y = (height - barHeight) / 2;
+            
+            this.ctx.fillRect(x, y, barWidth, barHeight);
         }
     }
-}
 
-// Utility functions
-class AppUtils {
-    static downloadFile(dataUrl, filename) {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    drawParticles(progress) {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        for (let i = 0; i < this.dataArray.length; i += 4) {
+            const value = this.dataArray[i];
+            const angle = (i / this.dataArray.length) * Math.PI * 2;
+            const radius = (value / 255) * 150;
+            
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            this.ctx.fillStyle = `hsl(${(i / this.dataArray.length) * 360}, 70%, 60%)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
+    drawBars(progress) {
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const barCount = 64;
+        const barWidth = width / barCount;
+        
+        for (let i = 0; i < barCount; i++) {
+            const dataIndex = Math.floor(i * this.dataArray.length / barCount);
+            const barHeight = (this.dataArray[dataIndex] / 255) * height * 0.8;
+            
+            const hue = (i / barCount) * 360;
+            this.ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            this.ctx.fillRect(i * barWidth, height - barHeight, barWidth - 2, barHeight);
+        }
+    }
+
+    drawCircle(progress) {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const average = this.dataArray.reduce((a, b) => a + b, 0) / this.dataArray.length;
+        const radius = (average / 255) * 100;
+        
+        this.ctx.strokeStyle = '#00ff88';
+        this.ctx.lineWidth = 5;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // Inner circle
+        this.ctx.fillStyle = `hsl(${(average / 255) * 360}, 70%, 60%)`;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius * 0.7, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    downloadVideo() {
+        const videoUrl = this.outputVideo.src;
+        if (videoUrl) {
+            const link = document.createElement('a');
+            link.href = videoUrl;
+            link.download = 'music-video.webm';
+            link.click();
+        }
     }
 }
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    new AuraAIApp();
+    new SimpleVideoMaker();
 });
-// Add to AuraAIApp class
-
-handleAudioUpload(file) {
-    if (!file.type.startsWith('audio/')) {
-        alert('Please upload an audio file (MP3 or WAV)');
-        return;
-    }
-
-    // Validate file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024; // 50MB
-    if (file.size > maxSize) {
-        alert('Audio file is too large. Maximum size is 50MB.');
-        return;
-    }
-
-    this.uploadedAudio = file;
-    
-    const audio = new Audio(URL.createObjectURL(file));
-    audio.addEventListener('loadedmetadata', () => {
-        document.getElementById('audio-filename').textContent = file.name;
-        document.getElementById('audio-duration').textContent = this.formatDuration(Math.floor(audio.duration));
-        document.getElementById('audio-info').style.display = 'block';
-        
-        // Update duration slider to match audio file
-        const durationSlider = document.getElementById('duration');
-        const audioDuration = Math.floor(audio.duration);
-        durationSlider.max = Math.min(audioDuration, 120); // Max 2 minutes
-        durationSlider.value = Math.min(audioDuration, 120);
-        document.getElementById('duration-value').textContent = this.formatDuration(Math.min(audioDuration, 120));
-        
-        console.log('Audio file loaded successfully:', file.name, 'Duration:', audioDuration, 'seconds');
-    });
-    
-    audio.addEventListener('error', () => {
-        alert('Failed to load audio file. Please ensure it\'s a valid MP3 or WAV file.');
-        this.uploadedAudio = null;
-        document.getElementById('audio-info').style.display = 'none';
-    });
-}
-
-async generateMusicVideo() {
-    const audioSource = document.getElementById('audio-source').value;
-    const lyrics = document.getElementById('lyrics-input').value.trim();
-    const musicStyle = document.getElementById('music-style').value;
-    const videoStyle = document.getElementById('video-style').value;
-    const duration = parseInt(document.getElementById('duration').value);
-    
-    if (audioSource === 'generated' && !lyrics) {
-        alert('Please enter lyrics for AI music generation');
-        return;
-    }
-    
-    if (audioSource === 'upload' && !this.uploadedAudio) {
-        alert('Please upload an audio file');
-        return;
-    }
-
-    const generateBtn = document.getElementById('generate-video');
-    const spinner = generateBtn.querySelector('.fa-cog');
-    const resultSection = document.getElementById('video-result');
-    
-    generateBtn.disabled = true;
-    spinner.style.display = 'inline-block';
-    
-    try {
-        this.showProgress('Creating your music video...');
-        
-        console.log('Starting video generation with:', {
-            audioSource,
-            videoStyle,
-            duration,
-            hasAvatar: !!this.generatedAvatar
-        });
-        
-        const videoGenerator = new MusicVideoGenerator();
-        const videoBlob = await videoGenerator.generate({
-            lyrics: lyrics || 'Enjoy the music!',
-            musicStyle,
-            videoStyle,
-            duration,
-            avatar: this.generatedAvatar,
-            audioSource: audioSource,
-            audioFile: this.uploadedAudio
-        });
-        
-        console.log('Video generated successfully, blob size:', videoBlob.size);
-        
-        const videoUrl = URL.createObjectURL(videoBlob);
-        const video = document.getElementById('generated-video');
-        video.src = videoUrl;
-        
-        // Show video info
-        video.addEventListener('loadedmetadata', () => {
-            console.log('Video loaded, duration:', video.duration, 'size:', videoBlob.size);
-        });
-        
-        resultSection.style.display = 'block';
-        
-        this.hideProgress();
-        
-        // Success message
-        alert('Music video created successfully! You can now download or share it.');
-        
-    } catch (error) {
-        console.error('Music video generation failed:', error);
-        alert('Failed to generate music video: ' + error.message + '\nPlease try again or try a different audio file.');
-    } finally {
-        generateBtn.disabled = false;
-        spinner.style.display = 'none';
-    }
-}
