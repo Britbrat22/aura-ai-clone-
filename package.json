@@ -1,0 +1,44 @@
+
+## package.json
+
+```json
+{
+  "name": "aura-ai-clone",
+  "version": "1.0.0",
+  "description": "Avatar and music video generator web application",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "npx http-server -p 3000",
+    "build": "echo 'No build step required for vanilla JS app'",
+    "deploy": "gh-pages -d ."
+  },
+  "keywords": [
+    "avatar",
+    "music-video",
+    "ai",
+    "generator",
+    "web-app",
+    "canvas",
+    "web-audio"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/aura-ai-clone.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/aura-ai-clone/issues"
+  },
+  "homepage": "https://yourusername.github.io/aura-ai-clone",
+  "devDependencies": {
+    "gh-pages": "^5.0.0",
+    "http-server": "^14.1.1"
+  },
+  "browserslist": [
+    "last 2 versions",
+    "not dead",
+    "not < 2%"
+  ]
+}
